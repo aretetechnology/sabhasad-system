@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="mr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>सभासद माहिती प्रणाली</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+:root{ --bg:#f6f5f2; --card:#fff; --ink:#20222a; --sub:#6b6f7a; --accent:#7c5cff; --accent2:#00b894; --line:#e7e5e0; --danger:#e05c5c; }
+*{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'Noto Sans Devanagari','Segoe UI',sans-serif;}
+header{position:sticky;top:0;background:var(--card);border-bottom:1px solid var(--line);z-index:10;}
+.wrap{max-width:1000px;margin:0 auto;padding:14px 16px;}
+h1{font-size:1.3rem;margin:0 0 10px;}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;}
+.tab{padding:8px 16px;border-radius:999px;cursor:pointer;font-weight:600;color:var(--sub);border:1px solid var(--line);background:transparent;}
+.tab.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+main{max-width:1000px;margin:0 auto;padding:16px;}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px;}
+label{display:block;font-weight:600;margin:14px 0 6px;font-size:.95rem;}
+input[type=text],input[type=tel],input[type=email],input[type=password],textarea,select{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font-family:inherit;font-size:1rem;}
+textarea{min-height:60px;resize:vertical;}
+input[type=file]{width:100%;padding:8px;border-radius:10px;border:1px dashed var(--line);background:var(--bg);}
+.btn{background:var(--accent);color:#fff;border:none;padding:11px 22px;border-radius:10px;font-weight:700;cursor:pointer;font-size:1rem;font-family:inherit;}
+.btn:disabled{opacity:.5;cursor:not-allowed;}
+.btn.secondary{background:transparent;color:var(--accent);border:1px solid var(--accent);}
+.btn.ghost{background:transparent;color:var(--sub);border:1px solid var(--line);}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+.hint{color:var(--sub);font-size:.85rem;margin-top:4px;}
+.err{color:var(--danger);font-size:.9rem;margin-top:8px;}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:16px;}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;text-align:center;}
+.stat .num{font-size:1.8rem;font-weight:700;color:var(--accent);}
+.stat .lbl{color:var(--sub);font-size:.85rem;margin-top:4px;}
+table{width:100%;border-collapse:collapse;font-size:.82rem;}
+th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap;}
+th{color:var(--sub);font-weight:600;}
+.tablewrap{overflow-x:auto;max-width:100%;}
+.empty{color:var(--sub);text-align:center;padding:30px 0;}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:10px;font-size:.9rem;opacity:0;transition:opacity .3s;pointer-events:none;z-index:50;}
+.toast.show{opacity:1;}
+.hidden{display:none !important;}
+.searchbar{padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);width:100%;font-size:1rem;}
+.result{padding:10px;border:1px solid var(--line);border-radius:8px;margin-top:6px;cursor:pointer;}
+.result:hover{border-color:var(--accent);}
+.result b{color:var(--accent);}
+.customer-hdr{background:var(--bg);border-radius:10px;padding:12px;margin-bottom:6px;}
+.badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:.75rem;font-weight:700;}
+.badge.done,.badge.Live{background:#d4f7e5;color:#0a7a4a;}
+.badge.pending,.badge.Expired{background:#ffe6d0;color:#a05300;}
+.loginbox{max-width:380px;margin:80px auto;}
+.checks{display:flex;flex-wrap:wrap;gap:10px 22px;}
+.checks label{display:flex;align-items:center;gap:8px;font-weight:400;margin:0;cursor:pointer;}
+.checks input{width:20px;height:20px;}
+</style>
+</head>
+<body>
+
+<div id="loginScreen" class="wrap">
+  <div class="card loginbox">
+    <h1>लॉगिन</h1>
+    <label>ईमेल</label>
+    <input type="email" id="loginEmail">
+    <label>पासवर्ड</label>
+    <input type="password" id="loginPass">
+    <div class="row" style="margin-top:16px;"><button class="btn" id="loginBtn">लॉगिन करा</button></div>
+    <div class="err hidden" id="loginErr"></div>
+  </div>
+</div>
+
+<div id="appScreen" class="hidden">
+<header>
+  <div class="wrap">
+    <div class="row" style="justify-content:space-between;">
+      <h1>सभासद माहिती प्रणाली</h1>
+      <button class="btn ghost" id="logoutBtn">लॉगआऊट</button>
+    </div>
+    <div class="tabs">
+      <button class="tab active" data-tab="fill">शोधा व भरा</button>
+      <button class="tab hidden" id="adminTabBtn" data-tab="admin">अॅडमिन पॅनेल</button>
+    </div>
+  </div>
+</header>
+<main>
+
+<section id="tab-fill" class="card">
+  <label>पूर्ण खाते क्र. (18 अंक) / पूर्ण ग्राहक क्र. / पूर्ण नाव टाका</label>
+  <input type="text" id="searchBox" class="searchbar" placeholder="पूर्ण माहिती टाका (अपूर्ण एंट्रीने निकाल दिसणार नाही)...">
+  <p class="hint">सुरक्षिततेसाठी: फक्त पूर्ण खाते क्रमांक, पूर्ण ग्राहक क्रमांक किंवा पूर्ण नाव टाकल्यासच त्या एका ग्राहकाची माहिती दिसेल.</p>  <div id="searchResults"></div>
+
+  <div id="editArea" class="hidden" style="margin-top:20px;">
+    <div class="customer-hdr">
+      <div><b id="c_name"></b></div>
+      <div class="hint">खाते क्र.: <span id="c_acc"></span> | ग्राहक क्र.: <span id="c_cust"></span></div>
+    </div>
+    <label>नावात बदल असल्यास (पूर्ण नाव)</label>
+    <input type="text" id="f_newname">
+    <label>मोबाइल नं.</label>
+    <input type="tel" id="f_mobile">
+    <label>ग्राहकाने दिलेली कागदपत्रे</label>
+    <div class="checks" id="f_docs">
+      <label><input type="checkbox" value="आधार कार्ड"> आधार कार्ड (Aadhar Card)</label>
+      <label><input type="checkbox" value="पॅन कार्ड"> पॅन कार्ड (Pan Card)</label>
+      <label><input type="checkbox" value="फोटो"> फोटो (Photo)</label>
+      <label><input type="checkbox" value="मृत्यू दाखला"> मृत्यू दाखला (Death Certificate)</label>
+    </div>
+    <label>सध्याचा पत्ता (मूळ नोंद)</label>
+    <div class="customer-hdr" id="c_address" style="min-height:20px;"></div>
+    <label>नवीन पत्ता</label>
+    <textarea id="f_newaddress" placeholder="भेटीदरम्यान खात्री केलेला पत्ता येथे लिहा"></textarea>
+    <label>गाव</label>
+    <input type="text" id="f_village">
+    <label>तालुका</label>
+    <input type="text" id="f_taluka">
+    <label>स्थिती</label>
+    <select id="f_status">
+      <option value="">-- निवडा --</option>
+      <option value="Live">Live</option>
+      <option value="Expired">Expired</option>
+    </select>
+    <div id="adminDocFields" class="hidden">
+      <label>आधार क्रमांक</label>
+      <input type="text" id="f_aadharnum">
+      <label>पॅन क्रमांक</label>
+      <input type="text" id="f_pannum">
+      <label>दस्तऐवज अपलोड करा</label>
+      <input type="file" id="f_document" accept="image/*,.pdf">
+    </div>
+    <div class="hint" id="document_status"></div>
+    <label>वारसदाराचे नाव</label>
+    <input type="text" id="f_nomname">
+    <label>वारसदार यांचे सभासदाशी नाते</label>
+    <input type="text" id="f_nomrel">
+    <label>वारसदाराचा मोबाइल नं.</label>
+    <input type="tel" id="f_nommob">
+    <div id="adminNomDocFields" class="hidden">
+      <label>वारसदाराचा आधार क्रमांक</label>
+      <input type="text" id="f_nomaadharnum">
+      <label>वारसदाराचा पॅन क्रमांक</label>
+      <input type="text" id="f_nompannum">
+      <label>वारसदाराचा दस्तऐवज अपलोड करा</label>
+      <input type="file" id="f_nomdocument" accept="image/*,.pdf">
+      <div class="hint" id="nomdocument_status"></div>
+    </div>
+    <label>बँकेची जवळची शाखा</label>
+    <input type="text" id="f_branch">
+    <label>Remark</label>
+    <textarea id="f_remark"></textarea>
+    <label>KYC पूर्ण झाले का?</label>
+    <div class="checks">
+      <label><input type="checkbox" id="f_kyccomplete"> होय, KYC पूर्ण झाले</label>
+    </div>
+    <div class="row" style="margin-top:18px;">
+      <button class="btn" id="saveBtn">जतन करा</button>
+      <button class="btn ghost" id="cancelBtn">रद्द करा</button>
+    </div>
+  </div>
+</section>
+
+<section id="tab-admin" class="card hidden">
+  <h3 style="margin-top:0;">फिल्टर</h3>
+  <div class="grid2">
+    <div><label>नाव / खाते / ग्राहक क्र.</label><input type="text" id="adm_q"></div>
+    <div><label>शाखा</label><input type="text" id="adm_branch"></div>
+    <div><label>गाव</label><input type="text" id="adm_village"></div>
+    <div><label>तालुका</label><input type="text" id="adm_taluka"></div>
+    <div><label>स्थिती</label><select id="adm_status"><option value="">सर्व</option><option value="Live">Live</option><option value="Expired">Expired</option></select></div>
+    <div><label>KYC पूर्ण</label><select id="adm_kyc"><option value="">सर्व</option><option value="true">होय</option><option value="false">नाही</option></select></div>
+  </div>
+  <div class="row" style="margin-top:12px;"><button class="btn ghost" id="applyFilterBtn">फिल्टर लागू करा</button></div>
+
+  <h3>फील्ड एक्झिक्युटिव्हनुसार पहा</h3>
+  <div class="row" id="execButtons"><span class="hint">लोड होत आहे...</span></div>
+
+  <div class="row" style="margin:16px 0;">
+    <button class="btn secondary" id="exportBtn">एक्सपोर्ट करा (Excel)</button>
+  </div>
+  <div id="adminStats" class="stats"></div>
+  <div class="tablewrap"><table id="adminTable"></table></div>
+  <p class="hint" id="adminNote"></p>
+</section>
+
+</main>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ===== CONFIG ===== */
+const SUPABASE_URL      = "https://hqcnwwodbxabvajznwbr.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhxY253d29kYnhhYnZhanpud2JyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA0MTY5OTQsImV4cCI6MjEwNTk5Mjk5NH0.lse06KCyiuYPN7nASU32lL25Li_nuTurbM41nk8WX14";
+const TABLE = "customers";
+const BUCKET = "kyc-docs";
+/* =================== */
+
+const REST_URL = `${SUPABASE_URL}/rest/v1/${TABLE}`;
+const STORAGE_URL = `${SUPABASE_URL}/storage/v1/object`;
+const AUTH_URL = `${SUPABASE_URL}/auth/v1`;
+
+let session = JSON.parse(sessionStorage.getItem('session')||'null');
+let myRole = null;
+
+function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2600); }
+function authHeaders(){ return { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${session.access_token}` }; }
+
+async function login(email, pass){
+  const res = await fetch(`${AUTH_URL}/token?grant_type=password`, {
+    method:'POST',
+    headers:{ 'apikey': SUPABASE_ANON_KEY, 'Content-Type':'application/json' },
+    body: JSON.stringify({ email, password: pass })
+  });
+  const data = await res.json();
+  if(!res.ok) throw new Error(data.error_description || data.msg || 'लॉगिन अयशस्वी');
+  session = data;
+  sessionStorage.setItem('session', JSON.stringify(session));
+}
+
+async function fetchMyRole(){
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/profiles?select=role&id=eq.${session.user.id}`, { headers: authHeaders() });
+  const rows = await res.json();
+  return rows[0]?.role || 'executive';
+}
+
+document.getElementById('loginBtn').addEventListener('click', async ()=>{
+  const email=document.getElementById('loginEmail').value.trim();
+  const pass=document.getElementById('loginPass').value;
+  const err=document.getElementById('loginErr'); err.classList.add('hidden');
+  try{
+    await login(email, pass);
+    await boot();
+  }catch(e){ err.textContent = e.message; err.classList.remove('hidden'); }
+});
+
+document.getElementById('logoutBtn').addEventListener('click', ()=>{
+  sessionStorage.removeItem('session');
+  location.reload();
+});
+
+async function boot(){
+  myRole = await fetchMyRole();
+  document.getElementById('loginScreen').classList.add('hidden');
+  document.getElementById('appScreen').classList.remove('hidden');
+  if(myRole==='admin'){
+    document.getElementById('adminTabBtn').classList.remove('hidden');
+    document.getElementById('adminDocFields').classList.remove('hidden');
+    document.getElementById('adminNomDocFields').classList.remove('hidden');
+  }
+}
+
+if(session){ boot().catch(()=>{ sessionStorage.removeItem('session'); }); }
+
+document.querySelectorAll('.tab').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-fill').classList.toggle('hidden', btn.dataset.tab!=='fill');
+    document.getElementById('tab-admin').classList.toggle('hidden', btn.dataset.tab!=='admin');
+    if(btn.dataset.tab==='admin') openAdminPanel();
+  });
+});
+
+/* ---------- Search & Fill ---------- */
+let current=null; let searchTimer=null;
+document.getElementById('searchBox').addEventListener('input', (e)=>{
+  clearTimeout(searchTimer);
+  const q=e.target.value.trim();
+  if(q.length<2){ document.getElementById('searchResults').innerHTML=''; return; }
+  searchTimer=setTimeout(()=>doSearch(q), 350);
+});
+
+async function doSearch(q){
+  try{
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/search_customers`, {
+      method:'POST', headers:{...authHeaders(),'Content-Type':'application/json'}, body: JSON.stringify({q})
+    });
+    if(!res.ok) throw new Error('शोध अयशस्वी');
+    const rows = await res.json();
+    const box=document.getElementById('searchResults');
+    if(!rows.length){ box.innerHTML='<p class="empty">कोणतीही नोंद सापडली नाही</p>'; return; }
+    box.innerHTML = rows.map(r=>`
+      <div class="result" data-acc="${r.acc_no}">
+        <b>${r.name||''}</b> — खाते: ${r.acc_no} | ग्राहक: ${r.cust_id||''}
+        <span class="badge ${r.mobile ? 'done':'pending'}">${r.mobile ? 'पूर्ण':'प्रलंबित'}</span>
+      </div>`).join('');
+    box.querySelectorAll('.result').forEach(el=>{
+      el.addEventListener('click', ()=> openCustomer(rows.find(r=>r.acc_no===el.dataset.acc)));
+    });
+  }catch(err){ toast('त्रुटी: '+err.message); }
+}
+
+function openCustomer(r){
+  current = r;
+  document.getElementById('c_name').textContent = r.name||'';
+  document.getElementById('c_acc').textContent = r.acc_no||'';
+  document.getElementById('c_cust').textContent = r.cust_id||'';
+  document.getElementById('f_newname').value = r.new_name||'';
+  document.getElementById('f_mobile').value = r.mobile||'';
+  const givenDocs = (r.docs_given||'').split(',').map(s=>s.trim());
+  document.querySelectorAll('#f_docs input').forEach(c=>{ c.checked = givenDocs.includes(c.value); });
+  document.getElementById('c_address').textContent = r.address || '(नोंद नाही)';
+  document.getElementById('f_newaddress').value = r.new_address||'';
+  document.getElementById('f_village').value = r.village||'';
+  document.getElementById('f_taluka').value = r.taluka||'';
+  document.getElementById('f_status').value = r.status||'';
+  document.getElementById('f_nomname').value = r.nominee_name||'';
+  document.getElementById('f_nomrel').value = r.nominee_relation||'';
+  document.getElementById('f_nommob').value = r.nominee_mobile||'';
+  document.getElementById('f_branch').value = r.branch||'';
+  document.getElementById('f_remark').value = r.remark||'';
+  document.getElementById('f_kyccomplete').checked = !!r.kyc_complete;
+  document.getElementById('f_aadharnum').value = r.aadhar_number||'';
+  document.getElementById('f_pannum').value = r.pan_number||'';
+  document.getElementById('document_status').textContent = r.document_url ? '✓ दस्तऐवज अपलोड केलेले आहे' : '';
+  document.getElementById('f_document').value='';
+  document.getElementById('f_nomaadharnum').value = r.nominee_aadhar_number||'';
+  document.getElementById('f_nompannum').value = r.nominee_pan_number||'';
+  document.getElementById('nomdocument_status').textContent = r.nominee_document_url ? '✓ दस्तऐवज अपलोड केलेले आहे' : '';
+  document.getElementById('f_nomdocument').value='';
+  document.getElementById('editArea').classList.remove('hidden');
+  document.getElementById('searchResults').innerHTML='';
+  document.getElementById('searchBox').value = r.name||'';
+}
+
+document.getElementById('cancelBtn').addEventListener('click', ()=>{
+  current=null;
+  document.getElementById('editArea').classList.add('hidden');
+  document.getElementById('searchBox').value='';
+});
+
+async function uploadFile(file, label){
+  const ext = file.name.split('.').pop();
+  const path = `${current.acc_no}/${label}_${Date.now()}.${ext}`;
+  const res = await fetch(`${STORAGE_URL}/${BUCKET}/${path}`, {
+    method:'POST', headers:{ ...authHeaders(), 'Content-Type': file.type || 'application/octet-stream' }, body: file
+  });
+  if(!res.ok){ const err=await res.json().catch(()=>({})); throw new Error(err?.message || 'अपलोड अयशस्वी'); }
+  return `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${path}`;
+}
+
+document.getElementById('saveBtn').addEventListener('click', async ()=>{
+  if(!current) return;
+  const btn=document.getElementById('saveBtn'); btn.disabled=true; btn.textContent='जतन होत आहे...';
+  try{
+    const update = {
+      new_name: document.getElementById('f_newname').value.trim(),
+      mobile: document.getElementById('f_mobile').value.trim(),
+      docs_given: Array.from(document.querySelectorAll('#f_docs input:checked')).map(c=>c.value).join(', '),
+      kyc_complete: document.getElementById('f_kyccomplete').checked,
+      new_address: document.getElementById('f_newaddress').value.trim(),
+      village: document.getElementById('f_village').value.trim(),
+      taluka: document.getElementById('f_taluka').value.trim(),
+      status: document.getElementById('f_status').value,
+      nominee_name: document.getElementById('f_nomname').value.trim(),
+      nominee_relation: document.getElementById('f_nomrel').value.trim(),
+      nominee_mobile: document.getElementById('f_nommob').value.trim(),
+      branch: document.getElementById('f_branch').value.trim(),
+      remark: document.getElementById('f_remark').value.trim(),
+      filled_by: session.user.email,
+      updated_at: new Date().toISOString()
+    };
+    if(myRole==='admin'){
+      update.aadhar_number = document.getElementById('f_aadharnum').value.trim();
+      update.pan_number = document.getElementById('f_pannum').value.trim();
+      update.nominee_aadhar_number = document.getElementById('f_nomaadharnum').value.trim();
+      update.nominee_pan_number = document.getElementById('f_nompannum').value.trim();
+      const documentFile = document.getElementById('f_document').files[0];
+      const nomDocFile = document.getElementById('f_nomdocument').files[0];
+      if(documentFile) update.document_url = await uploadFile(documentFile, 'document');
+      if(nomDocFile) update.nominee_document_url = await uploadFile(nomDocFile, 'nominee_document');
+    }
+
+    const params = {
+      p_acc_no: current.acc_no, p_new_name: update.new_name, p_docs_given: update.docs_given, p_kyc_complete: update.kyc_complete,
+      p_mobile: update.mobile, p_new_address: update.new_address,
+      p_village: update.village, p_taluka: update.taluka, p_status: update.status,
+      p_nominee_name: update.nominee_name, p_nominee_relation: update.nominee_relation,
+      p_nominee_mobile: update.nominee_mobile, p_branch: update.branch, p_remark: update.remark,
+      p_aadhar_number: update.aadhar_number ?? null, p_pan_number: update.pan_number ?? null,
+      p_document_url: update.document_url ?? null,
+      p_nominee_aadhar_number: update.nominee_aadhar_number ?? null,
+      p_nominee_pan_number: update.nominee_pan_number ?? null,
+      p_nominee_document_url: update.nominee_document_url ?? null
+    };
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/save_customer`, {
+      method:'POST', headers:{ ...authHeaders(), 'Content-Type':'application/json' }, body: JSON.stringify(params)
+    });
+    if(!res.ok){ const err=await res.json().catch(()=>({})); throw new Error(err?.message || res.statusText); }
+    toast('माहिती जतन झाली ✓');
+    document.getElementById('editArea').classList.add('hidden');
+    document.getElementById('searchBox').value=''; current=null;
+  }catch(err){ toast('त्रुटी: '+err.message); }
+  finally{ btn.disabled=false; btn.textContent='जतन करा'; }
+});
+
+/* ---------- Admin Panel ---------- */
+let selectedExec = '';
+
+function buildFilterQS(){
+  const q=document.getElementById('adm_q').value.trim();
+  const branch=document.getElementById('adm_branch').value.trim();
+  const village=document.getElementById('adm_village').value.trim();
+  const taluka=document.getElementById('adm_taluka').value.trim();
+  const status=document.getElementById('adm_status').value;
+  const kyc=document.getElementById('adm_kyc').value;
+  const parts=[];
+  if(q) parts.push(`or=(acc_no.ilike.*${q}*,cust_id.ilike.*${q}*,name.ilike.*${q}*)`);
+  if(branch) parts.push(`branch=ilike.*${branch}*`);
+  if(village) parts.push(`village=ilike.*${village}*`);
+  if(taluka) parts.push(`taluka=ilike.*${taluka}*`);
+  if(status) parts.push(`status=eq.${status}`);
+  if(kyc) parts.push(`kyc_complete=eq.${kyc}`);
+  if(selectedExec) parts.push(`filled_by=eq.${encodeURIComponent(selectedExec)}`);
+  return parts.join('&');
+}
+
+async function openAdminPanel(){
+  await loadExecButtons();
+  await runAdminQuery();
+}
+
+let execNames = {};
+async function loadExecButtons(){
+  const box=document.getElementById('execButtons');
+  try{
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/profiles?select=email,full_name,role&order=full_name.asc`, { headers: authHeaders() });
+    if(!res.ok) throw new Error('profiles');
+    const profiles = await res.json();
+    execNames = {};
+    profiles.forEach(p=>{ execNames[p.email] = p.full_name || p.email; });
+    const list = profiles.slice().sort((a,b)=>(a.full_name||a.email).localeCompare(b.full_name||b.email));
+    box.innerHTML = `<button class="btn ${selectedExec===''?'':'ghost'}" data-exec="">सर्व</button>` +
+      list.map(p=>`<button class="btn ${selectedExec===p.email?'':'ghost'}" data-exec="${p.email}">${p.full_name||p.email}</button>`).join('');
+    box.querySelectorAll('button').forEach(b=>{
+      b.addEventListener('click', ()=>{ selectedExec=b.dataset.exec; loadExecButtons(); runAdminQuery(); });
+    });
+  }catch(err){ box.innerHTML='<span class="hint">एक्झिक्युटिव्ह यादी आणता आली नाही</span>'; }
+}
+
+async function exactCount(extraFilter){
+  const qs = buildFilterQS();
+  const parts = [qs, extraFilter].filter(Boolean);
+  const url = `${REST_URL}?select=acc_no${parts.length?'&'+parts.join('&'):''}`;
+  const res = await fetch(url, { headers:{...authHeaders(),'Prefer':'count=exact','Range-Unit':'items','Range':'0-0'} });
+  return parseInt((res.headers.get('content-range')||'/0').split('/')[1]) || 0;
+}
+
+async function runAdminQuery(){
+  document.getElementById('adminNote').textContent='लोड होत आहे...';
+  try{
+    const [rows, total, done, kycDone, docsCollected] = await Promise.all([
+      fetchFiltered(true),
+      exactCount(''),
+      exactCount('mobile=not.is.null&mobile=neq.'),
+      exactCount('kyc_complete=eq.true'),
+      exactCount('docs_given=not.is.null&docs_given=neq.')
+    ]);
+    renderAdminTable(rows, {total, done, kycDone, docsCollected});
+    document.getElementById('adminNote').textContent = rows.length>=200 ? 'पहिल्या 200 नोंदी दाखवल्या आहेत (एक्सपोर्टमध्ये सर्व समाविष्ट)' : `${rows.length} नोंदी सापडल्या`;
+  }catch(err){ document.getElementById('adminNote').textContent='त्रुटी: '+err.message; }
+}
+
+async function fetchFiltered(preview){
+  const qs = buildFilterQS();
+  const pageSize = 1000;
+  let all=[]; let from=0;
+  while(true){
+    const url = `${REST_URL}?select=*${qs?'&'+qs:''}&order=acc_no.asc`;
+    const res = await fetch(url, { headers:{ ...authHeaders(), 'Range-Unit':'items','Range':`${from}-${from+pageSize-1}` } });
+    if(!res.ok){ const err=await res.json().catch(()=>({})); throw new Error(err?.message||res.statusText); }
+    const chunk = await res.json();
+    all = all.concat(chunk);
+    if(preview && all.length>=200) return all.slice(0,200);
+    if(chunk.length<pageSize) break;
+    from+=pageSize;
+  }
+  return all;
+}
+
+document.getElementById('applyFilterBtn').addEventListener('click', runAdminQuery);
+
+function renderAdminTable(rows, counts){
+  document.getElementById('adminStats').innerHTML = `
+    <div class="stat"><div class="num">${counts.total}</div><div class="lbl">${selectedExec?'निवडलेल्या एक्झिक्युटिव्हच्या नोंदी':'एकूण नोंदी'}</div></div>
+    <div class="stat"><div class="num">${counts.done}</div><div class="lbl">मोबाइल भरलेले</div></div>
+    <div class="stat"><div class="num">${counts.kycDone}</div><div class="lbl">एकूण KYC पूर्ण</div></div>
+    <div class="stat"><div class="num">${counts.docsCollected}</div><div class="lbl">दस्तऐवज जमा झालेले</div></div>`;
+  const tbl=document.getElementById('adminTable');
+  if(!rows.length){ tbl.innerHTML='<tr><td class="empty">कोणतीही नोंद नाही</td></tr>'; return; }
+  const body=rows.map(r=>`
+    <tr>
+      <td>${r.name||''}</td><td>${r.new_name||''}</td><td>${r.acc_no}</td><td>${r.mobile||''}</td><td>${r.docs_given||''}</td>
+      <td><span class="badge ${r.kyc_complete?'done':'pending'}">${r.kyc_complete?'होय':'नाही'}</span></td>
+      <td>${r.address||''}</td><td>${r.new_address||''}</td>
+      <td>${r.village||''}</td><td>${r.taluka||''}</td><td>${r.branch||''}</td>
+      <td>${r.aadhar_number||''}</td><td>${r.pan_number||''}</td>
+      <td>${r.document_url?'<a href="'+r.document_url+'" target="_blank">पहा</a>':''}</td>
+      <td>${r.nominee_aadhar_number||''}</td><td>${r.nominee_pan_number||''}</td>
+      <td>${r.nominee_document_url?'<a href="'+r.nominee_document_url+'" target="_blank">पहा</a>':''}</td>
+      <td><span class="badge ${r.status||''}">${r.status||'-'}</span></td>
+      <td>${execNames[r.filled_by]||r.filled_by||''}</td>
+    </tr>`).join('');
+  tbl.innerHTML = `<tr><th>नाव</th><th>बदललेले नाव</th><th>खाते क्र.</th><th>मोबाइल</th><th>कागदपत्रे</th><th>KYC पूर्ण</th><th>मूळ पत्ता</th><th>नवीन पत्ता</th><th>गाव</th><th>तालुका</th><th>शाखा</th><th>आधार क्र.</th><th>पॅन क्र.</th><th>दस्तऐवज</th><th>वारसदार आधार</th><th>वारसदार पॅन</th><th>वारसदार दस्तऐवज</th><th>स्थिती</th><th>एक्झिक्युटिव्ह</th></tr>${body}`;
+}
+
+function exportToExcel(rows, filename){
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Data');
+  XLSX.writeFile(wb, filename);
+}
+
+document.getElementById('exportBtn').addEventListener('click', async ()=>{
+  const btn=document.getElementById('exportBtn'); btn.disabled=true; btn.textContent='तयार होत आहे...';
+  try{
+    const rows = await fetchFiltered(false);
+    if(!rows.length){ toast('कोणताही डेटा सापडला नाही'); return; }
+    const label = selectedExec ? (execNames[selectedExec]||selectedExec).replace(/[^a-zA-Z0-9\u0900-\u097F]/g,'_') : 'all';
+    const colOrder = ['acc_no','cust_id','name','new_name','mobile','docs_given','kyc_complete','address','new_address',
+      'village','taluka','branch','aadhar_number','pan_number','document_url','nominee_name','nominee_relation',
+      'nominee_mobile','nominee_aadhar_number','nominee_pan_number','nominee_document_url','status',
+      'executive_name','remark','updated_at'];
+    const named = rows.map(r=>{
+      const full = { ...r, kyc_complete: r.kyc_complete ? 'होय' : 'नाही', executive_name: execNames[r.filled_by]||r.filled_by||'' };
+      const ordered = {};
+      colOrder.forEach(k=>{ ordered[k] = full[k] ?? ''; });
+      return ordered;
+    });
+    exportToExcel(named, `customers-${label}-${Date.now()}.xlsx`);
+    toast(rows.length+' नोंदी एक्सपोर्ट झाल्या');
+  }catch(err){ toast('त्रुटी: '+err.message); }
+  finally{ btn.disabled=false; btn.textContent='एक्सपोर्ट करा (Excel)'; }
+});
+</script>
+</body>
+</html>
