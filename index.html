@@ -97,6 +97,12 @@ th{color:var(--sub);font-weight:600;}
     </div>
     <label>नावात बदल असल्यास (पूर्ण नाव)</label>
     <input type="text" id="f_newname">
+    <label>वारसदाराची कागदपत्रे</label>
+    <div class="checks" id="f_nomdocs">
+      <label><input type="checkbox" value="आधार कार्ड"> आधार कार्ड (Aadhar Card)</label>
+      <label><input type="checkbox" value="पॅन कार्ड"> पॅन कार्ड (Pan Card)</label>
+      <label><input type="checkbox" value="फोटो"> फोटो (Photo)</label>
+    </div>
     <label>मोबाइल नं.</label>
     <input type="tel" id="f_mobile">
     <label>ग्राहकाने दिलेली कागदपत्रे</label>
@@ -168,6 +174,8 @@ th{color:var(--sub);font-weight:600;}
     <div><label>तालुका</label><input type="text" id="adm_taluka"></div>
     <div><label>स्थिती</label><select id="adm_status"><option value="">सर्व</option><option value="Live">Live</option><option value="Expired">Expired</option></select></div>
     <div><label>KYC पूर्ण</label><select id="adm_kyc"><option value="">सर्व</option><option value="true">होय</option><option value="false">नाही</option></select></div>
+    <div><label>तारीख पासून (भरलेली)</label><input type="date" id="adm_from"></div>
+    <div><label>तारीख पर्यंत (भरलेली)</label><input type="date" id="adm_to"></div>
   </div>
   <div class="row" style="margin-top:12px;"><button class="btn ghost" id="applyFilterBtn">फिल्टर लागू करा</button></div>
 
@@ -296,6 +304,8 @@ function openCustomer(r){
   document.getElementById('c_cust').textContent = r.cust_id||'';
   document.getElementById('f_newname').value = r.new_name||'';
   document.getElementById('f_mobile').value = r.mobile||'';
+  const givenNomDocs = (r.nominee_docs_given||'').split(',').map(s=>s.trim());
+  document.querySelectorAll('#f_nomdocs input').forEach(c=>{ c.checked = givenNomDocs.includes(c.value); });
   const givenDocs = (r.docs_given||'').split(',').map(s=>s.trim());
   document.querySelectorAll('#f_docs input').forEach(c=>{ c.checked = givenDocs.includes(c.value); });
   document.getElementById('c_address').textContent = r.address || '(नोंद नाही)';
@@ -345,6 +355,7 @@ document.getElementById('saveBtn').addEventListener('click', async ()=>{
     const update = {
       new_name: document.getElementById('f_newname').value.trim(),
       mobile: document.getElementById('f_mobile').value.trim(),
+      nominee_docs_given: Array.from(document.querySelectorAll('#f_nomdocs input:checked')).map(c=>c.value).join(', '),
       docs_given: Array.from(document.querySelectorAll('#f_docs input:checked')).map(c=>c.value).join(', '),
       kyc_complete: document.getElementById('f_kyccomplete').checked,
       new_address: document.getElementById('f_newaddress').value.trim(),
@@ -371,7 +382,7 @@ document.getElementById('saveBtn').addEventListener('click', async ()=>{
     }
 
     const params = {
-      p_acc_no: current.acc_no, p_new_name: update.new_name, p_docs_given: update.docs_given, p_kyc_complete: update.kyc_complete,
+      p_acc_no: current.acc_no, p_new_name: update.new_name, p_docs_given: update.docs_given, p_nominee_docs_given: update.nominee_docs_given, p_kyc_complete: update.kyc_complete,
       p_mobile: update.mobile, p_new_address: update.new_address,
       p_village: update.village, p_taluka: update.taluka, p_status: update.status,
       p_nominee_name: update.nominee_name, p_nominee_relation: update.nominee_relation,
@@ -403,7 +414,11 @@ function buildFilterQS(){
   const taluka=document.getElementById('adm_taluka').value.trim();
   const status=document.getElementById('adm_status').value;
   const kyc=document.getElementById('adm_kyc').value;
+  const fromDate=document.getElementById('adm_from').value;
+  const toDate=document.getElementById('adm_to').value;
   const parts=[];
+  if(fromDate) parts.push(`updated_at=gte.${fromDate}T00:00:00`);
+  if(toDate) parts.push(`updated_at=lte.${toDate}T23:59:59`);
   if(q) parts.push(`or=(acc_no.ilike.*${q}*,cust_id.ilike.*${q}*,name.ilike.*${q}*)`);
   if(branch) parts.push(`branch=ilike.*${branch}*`);
   if(village) parts.push(`village=ilike.*${village}*`);
@@ -489,7 +504,7 @@ function renderAdminTable(rows, counts){
   if(!rows.length){ tbl.innerHTML='<tr><td class="empty">कोणतीही नोंद नाही</td></tr>'; return; }
   const body=rows.map(r=>`
     <tr>
-      <td>${r.name||''}</td><td>${r.new_name||''}</td><td>${r.acc_no}</td><td>${r.mobile||''}</td><td>${r.docs_given||''}</td>
+      <td>${r.name||''}</td><td>${r.new_name||''}</td><td>${r.acc_no}</td><td>${r.nominee_docs_given||''}</td><td>${r.mobile||''}</td><td>${r.docs_given||''}</td>
       <td><span class="badge ${r.kyc_complete?'done':'pending'}">${r.kyc_complete?'होय':'नाही'}</span></td>
       <td>${r.address||''}</td><td>${r.new_address||''}</td>
       <td>${r.village||''}</td><td>${r.taluka||''}</td><td>${r.branch||''}</td>
@@ -500,7 +515,7 @@ function renderAdminTable(rows, counts){
       <td><span class="badge ${r.status||''}">${r.status||'-'}</span></td>
       <td>${execNames[r.filled_by]||r.filled_by||''}</td>
     </tr>`).join('');
-  tbl.innerHTML = `<tr><th>नाव</th><th>बदललेले नाव</th><th>खाते क्र.</th><th>मोबाइल</th><th>कागदपत्रे</th><th>KYC पूर्ण</th><th>मूळ पत्ता</th><th>नवीन पत्ता</th><th>गाव</th><th>तालुका</th><th>शाखा</th><th>आधार क्र.</th><th>पॅन क्र.</th><th>दस्तऐवज</th><th>वारसदार आधार</th><th>वारसदार पॅन</th><th>वारसदार दस्तऐवज</th><th>स्थिती</th><th>एक्झिक्युटिव्ह</th></tr>${body}`;
+  tbl.innerHTML = `<tr><th>नाव</th><th>बदललेले नाव</th><th>खाते क्र.</th><th>वारसदार कागदपत्रे</th><th>मोबाइल</th><th>कागदपत्रे</th><th>KYC पूर्ण</th><th>मूळ पत्ता</th><th>नवीन पत्ता</th><th>गाव</th><th>तालुका</th><th>शाखा</th><th>आधार क्र.</th><th>पॅन क्र.</th><th>दस्तऐवज</th><th>वारसदार आधार</th><th>वारसदार पॅन</th><th>वारसदार दस्तऐवज</th><th>स्थिती</th><th>एक्झिक्युटिव्ह</th></tr>${body}`;
 }
 
 function exportToExcel(rows, filename){
@@ -516,7 +531,7 @@ document.getElementById('exportBtn').addEventListener('click', async ()=>{
     const rows = await fetchFiltered(false);
     if(!rows.length){ toast('कोणताही डेटा सापडला नाही'); return; }
     const label = selectedExec ? (execNames[selectedExec]||selectedExec).replace(/[^a-zA-Z0-9\u0900-\u097F]/g,'_') : 'all';
-    const colOrder = ['acc_no','cust_id','name','new_name','mobile','docs_given','kyc_complete','address','new_address',
+    const colOrder = ['acc_no','cust_id','name','new_name','nominee_docs_given','mobile','docs_given','kyc_complete','address','new_address',
       'village','taluka','branch','aadhar_number','pan_number','document_url','nominee_name','nominee_relation',
       'nominee_mobile','nominee_aadhar_number','nominee_pan_number','nominee_document_url','status',
       'executive_name','remark','updated_at'];
